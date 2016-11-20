@@ -1,15 +1,9 @@
 language: java
 jdk:
+  - openjdk6
   - oraclejdk7
   - oraclejdk8
 branches:
   only:
     - master
-
-notifications:
-  recipients:
-    - elaatifi@gmail.com
-    - matt.deboer@gmail.com
-  email:
-    on_success: always
-    on_failure: always
+    - ndrbrt
