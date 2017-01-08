@@ -18,17 +18,14 @@
 
 package ma.glasnost.orika.impl.generator.specification;
 
-import static java.lang.String.format;
-import static ma.glasnost.orika.impl.generator.SourceCodeContext.statement;
 import ma.glasnost.orika.impl.generator.MultiOccurrenceVariableRef;
 import ma.glasnost.orika.impl.generator.SourceCodeContext;
 import ma.glasnost.orika.impl.generator.VariableRef;
 import ma.glasnost.orika.metadata.FieldMap;
 
-/**
- * ObjectToObject
- *
- */
+import static java.lang.String.format;
+import static ma.glasnost.orika.impl.generator.SourceCodeContext.statement;
+
 public class ObjectToObject extends AbstractSpecification {
 
     public boolean appliesTo(FieldMap fieldMap) {
@@ -42,16 +39,24 @@ public class ObjectToObject extends AbstractSpecification {
         }
         
         String mapNewObject = destination.assignIfPossible(format("(%s)%s", destination.typeName(), code.callMapper(source, destination.type()), source));
+
         String mapExistingObject = code.callMapper(source, destination);
         if (destination.isAssignable()) {
         	mapExistingObject = destination.assignIfPossible(format("(%s)%s", destination.typeName(), mapExistingObject));
         }
-        String mapStmt = format(" %s { %s; } else { %s; }", destination.ifNull(), mapNewObject, mapExistingObject);
-        
+
+        String mapStmt = format(" %s {\n %s;\n } else {\n %s; }\n", destination.ifNull(), mapNewObject, mapExistingObject);
+        String ipStmt = ipStatement(fieldMap, destination);
+        String mapNull = destination.isAssignable() && shouldMapNulls(fieldMap, code) ? format(" else {\n %s {\n %s; }\n}\n", destination.ifPathNotNull(), destination.assign("null")): "";
+
+        return statement("%s {\n %s  %s }\n %s", source.ifNotNull(), mapStmt, ipStmt, mapNull);
+    }
+
+    private String ipStatement(FieldMap fieldMap, VariableRef destination) {
         String ipStmt = "";
         if (fieldMap.getInverse() != null) {
             VariableRef inverse = new VariableRef(fieldMap.getInverse(), destination);
-            
+
             if (inverse.isCollection()) {
                 MultiOccurrenceVariableRef inverseCollection = MultiOccurrenceVariableRef.from(inverse);
                 ipStmt += inverse.ifNull() + inverse.assign(inverseCollection.newCollection()) + ";";
@@ -62,10 +67,7 @@ public class ObjectToObject extends AbstractSpecification {
                 ipStmt += statement(inverse.assign(destination.owner()));
             }
         }
-        
-        String mapNull = destination.isAssignable() && shouldMapNulls(fieldMap, code) ? format(" else {\n %s { %s; }\n}\n", destination.ifPathNotNull(), destination.assign("null")): "";
-        return statement("%s { %s  %s } %s", source.ifNotNull(), mapStmt, ipStmt, mapNull);
-        
+        return ipStmt;
     }
-    
+
 }
